@@ -4,7 +4,7 @@
 #include "raylib.h"
 #include "raymath.h"
 #define SCREEN_WIDTH 1020
-#define SCREEN_HEIGHT 700
+#define SCREEN_HEIGHT 730
 #define GRID_ROWS 23
 #define GRID_COLS 34
 #define CELL_SIZE 30
@@ -159,13 +159,15 @@ int main(void) {
     draw_ui();
 
     if (game_state.game_over) {
-      DrawText("GAME OVER (~_~)", SCREEN_WIDTH/2 - 175, SCREEN_HEIGHT/2, 40, RED);
-      DrawText("Press R to restart", SCREEN_WIDTH/2 - 80, SCREEN_HEIGHT/2 + 50, 20, WHITE);
+      DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){0, 0, 0, 200});
+      DrawText("GAME OVER (~_~)", SCREEN_WIDTH/2 - 175, (SCREEN_HEIGHT - 40)/2, 40, RED);
+      DrawText("Press R to restart", SCREEN_WIDTH/2 - 80,( SCREEN_HEIGHT - 40)/2 + 50, 20, WHITE);
     }
 
     if (game_state.level_complete) {
-      DrawText("LEVEL COMPLETE!", SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT/2, 40, GREEN);
-      DrawText("Press SPACE for next level", SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2 + 40, 20, WHITE);
+      DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){0, 0, 0, 200});
+      DrawText("LEVEL COMPLETE!", SCREEN_WIDTH/2 - 150, (SCREEN_HEIGHT - 40)/2, 40, GREEN);
+      DrawText("Press SPACE for next level", SCREEN_WIDTH/2 - 100, (SCREEN_HEIGHT - 40)/2 + 40, 20, WHITE);
     }
     
     EndDrawing();
@@ -454,19 +456,19 @@ void reset_player_to_border(Ball *player)
 void draw_ui() {
   char text[100];
   sprintf(text, "lives: %d", game_state.lives);
-  DrawText(text, 10, 10, 20, WHITE);
+  DrawText(text, 10, SCREEN_HEIGHT - 35, 20, WHITE);
 
   sprintf(text, "score: %d", game_state.score);
-  DrawText(text, 10, 35, 20, WHITE);
+  DrawText(text, 40 + 3 * CELL_SIZE,  SCREEN_HEIGHT - 35, 20, WHITE);
 
   sprintf(text,"Fille: %.1f%%", game_state.percentage_filled);
-  DrawText(text, 10, 60, 20, WHITE);
+  DrawText(text, 70 + 9 * CELL_SIZE ,  SCREEN_HEIGHT - 35, 20, WHITE);
 
   sprintf(text, "Level: %d", game_state.level);
-  DrawText(text, 10, 85, 20, WHITE);
+  DrawText(text, 100 + 14 * CELL_SIZE,  SCREEN_HEIGHT - 35, 20, WHITE);
 
   sprintf(text, "Target: 80%%");
-  DrawText(text, 10, 110, 20, WHITE);
+  DrawText(text, 130 + 17 * CELL_SIZE,  SCREEN_HEIGHT - 35, 20, WHITE);
 }
 
 // # 16
