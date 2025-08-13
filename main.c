@@ -57,6 +57,7 @@ void complete_area();
 void init_game_state();
 bool check_collision_with_balls(Ball *player, Ball balls[], int num_balls);
 void reset_player_to_border(Ball *player);
+void draw_ui();
 static inline bool is_solid_cell(int row, int col);
 bool player_on_border = true;
 
@@ -111,6 +112,10 @@ int main(void) {
     DrawCircleV(balls[0].pos, balls[0].rad, balls[0].color);
     DrawCircleV(player.pos, player.rad, player.color);
     //DrawCircle(attractor.pos.x, attractor.pos.y, attractor.rad, attractor.color);
+    draw_ui();
+    if (game_state.game_over) {
+      DrawText("Game over loser :}", SCREEN_WIDTH/2 - 175, SCREEN_HEIGHT/2, 40, RED);
+    }
     EndDrawing();
   }
 
@@ -298,13 +303,16 @@ bool is_on_border(int x, int y) {
 
 // # 11
 void complete_area() {
+  int cells_converted = 0;
   for (int i = 0; i < GRID_ROWS; i++) {
     for (int j = 0; j < GRID_COLS; j++) {
       if (grid[i][j] == WALL_BUILDING) {
 	grid[i][j] = WALL_SOLID;
+	cells_converted++;
       }
     }
   }
+  game_state.score = 5 * cells_converted;
   printf("area completed \n");
 }
 
@@ -342,3 +350,12 @@ void reset_player_to_border(Ball *player)
   player_on_border = true;
 }
 
+// # 15
+void draw_ui() {
+  char text[100];
+  sprintf(text, "lives: %d", game_state.lives);
+  DrawText(text, 10, 10, 20, WHITE);
+
+  sprintf(text, "score: %d", game_state.score);
+  DrawText(text, 10, 35, 20, WHITE);
+}
