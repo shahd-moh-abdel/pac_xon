@@ -92,7 +92,7 @@ int main(void) {
   init_game_state();
 
   Ball player;
-  player_init(&player, 0, 0, 220.0f, CELL_SIZE * 0.4f, DARKGREEN);
+  player_init(&player, 0, 0, 220.0f, CELL_SIZE * 0.4f, DARKBLUE);
 
   SetTargetFPS(60);
 
@@ -461,7 +461,7 @@ void draw_ui() {
   sprintf(text, "score: %d", game_state.score);
   DrawText(text, 40 + 3 * CELL_SIZE,  SCREEN_HEIGHT - 35, 20, WHITE);
 
-  sprintf(text,"Fille: %.1f%%", game_state.percentage_filled);
+  sprintf(text,"Filled: %.1f%%", game_state.percentage_filled);
   DrawText(text, 70 + 9 * CELL_SIZE ,  SCREEN_HEIGHT - 35, 20, WHITE);
 
   sprintf(text, "Level: %d", game_state.level);
@@ -494,10 +494,10 @@ void reset_level(Ball *player, Ball balls[], int num_balls) {
   player_init(player, 0, 0, player->speed, player->rad, player->color);
   balls[0] = ball_init((Vector2){200.0f, 300.0f}, (Vector2){4.0f, 5.0f}, 15, 20, RED);
   if (num_balls > 1) {
-    balls[1] = ball_init((Vector2){600.0f, 400.0f}, (Vector2){-3.0f, 4.0f}, 15, 20, RED);
+    balls[1] = ball_init((Vector2){600.0f, 400.0f}, (Vector2){-3.0f, 4.0f}, 15, 20, ORANGE);
   }
   if (num_balls > 2) {
-    balls[2] = ball_init((Vector2){400.0f, 200.0f}, (Vector2){5.0f, -3.0f}, 15, 20, RED);
+    balls[2] = ball_init((Vector2){400.0f, 200.0f}, (Vector2){5.0f, -3.0f}, 15, 20, PINK);
   }
 }
 
