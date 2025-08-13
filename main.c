@@ -8,6 +8,7 @@
 #define GRID_ROWS 23
 #define GRID_COLS 34
 #define CELL_SIZE 30
+#define MAX_BALLS 5
 
 typedef struct {
   Vector2 pos;
@@ -26,8 +27,14 @@ typedef struct {
 typedef struct {
   int lives;
   int score;
+  int level;
+  float percentage_filled;
   bool game_over;
+  bool level_complete;
+  bool on_border;
+  Vector2 trail_start;
 } GameState;
+
 GameState game_state;
 
 //WALLS
@@ -37,85 +44,129 @@ typedef enum {
   WALL_SOLID
 } WallState;
 
-// grid
+
 WallState grid[GRID_ROWS][GRID_COLS];
 
 
-//functions
+// ** FUNCTIONS ** //
+//ball
 Ball ball_init(Vector2 pos, Vector2 vel, float rad, float mass, Color color);
 Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS]);
 Vector2 get_attraction_force(Ball a, Ball b, float G);
 void apply_force(Ball *ball, Vector2 force, float dt);
+//grid
 void draw_grid(Ball ball);
 void init_grid();
-void player_init(Ball *player, int start_cell_x, int start_cell_y, float speed,
-                 float rad, Color color);
+//player
+void player_init(Ball *player, int start_cell_x, int start_cell_y, float speed,float rad, Color color);
 void player_move(Ball *player, int dx, int dy);
 void player_update(Ball *player, float dt);
-bool is_on_border(int x, int y);
-void complete_area();
-void init_game_state();
-bool check_collision_with_balls(Ball *player, Ball balls[], int num_balls);
-void reset_player_to_border(Ball *player);
-void draw_ui();
 static inline bool is_solid_cell(int row, int col);
+//player mech
+void complete_area();
+void reset_player_to_border(Ball *player);
+bool is_on_border(int x, int y);
+
+void flood_fill(WallState temp_grid[GRID_ROWS][GRID_COLS],int row, int col, Ball balls[], int num_balls);
+//game mech
+void init_game_state();
+void update_percentage();
+void draw_ui();
+
+void reset_level(Ball *player, Ball balls[], int num_balls);
+void next_level(Ball *player, Ball balls[], int num_balls);
+
+bool check_collision_with_balls(Ball *player, Ball balls[], int num_balls);
 bool player_on_border = true;
 
 
 int main(void) {
-  float G = 1000.0f;
-  Ball balls[1];
+  //float G = 1000.0f;
+  Ball balls[MAX_BALLS];
+  int num_balls = 1;
   balls[0] = ball_init((Vector2){200.0f, 300.0f}, (Vector2){4.0f, 5.0f}, 20, 20, RED);
 
-  //Ball attractor = ball_init((Vector2){(SCREEN_WIDTH / 2.0f), (SCREEN_HEIGHT / 2.0f)},(Vector2){0, 0}, 40, 100000, RED); 
-  
-  Rectangle random_rec = {510, 350, 30, 30};
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pac Xon");
   init_grid();
   init_game_state();
 
   Ball player;
-  player_init(&player, 2, 2, 220.0f, CELL_SIZE * 0.4f, DARKGREEN);
+  player_init(&player, 0, 0, 220.0f, CELL_SIZE * 0.4f, DARKGREEN);
 
   SetTargetFPS(60);
 
   while(!WindowShouldClose()){
     float dt = GetFrameTime();
-    //Vector2 force = get_attraction_force(ball, attractor, G);
-    //apply_force(&ball, force, dt);
-    if (!player.moving)
-      {
-	if (IsKeyPressed(KEY_RIGHT)) player_move(&player, +1,  0);
-	if (IsKeyPressed(KEY_LEFT))  player_move(&player, -1,  0);
-	if (IsKeyPressed(KEY_UP))    player_move(&player,  0, -1);
-	if (IsKeyPressed(KEY_DOWN))  player_move(&player,  0, +1);
-      }
-    if (!player_on_border) {
-      if (check_collision_with_balls(&player, balls, 1)) {
-	game_state.lives--;
-	printf("lives remaining: %d\n", game_state.lives);
-	if (game_state.lives <= 0) {
-	  game_state.game_over = true;
-	  printf("game over :(\n");
-	} else {
-	  reset_player_to_border(&player);
-	}
-	}
-    }
 
-    player_update(&player, dt);
-    balls[0] = ball_update(balls[0], dt, grid);
-    //attractor = ball_update(attractor, dt);
+    if (game_state.game_over) {
+      if (IsKeyPressed(KEY_R)) {
+	init_game_state();
+	reset_level(&player, balls, num_balls);
+	num_balls = 1;
+      }
+    } else if (game_state.level_complete) {
+      if (IsKeyPressed(KEY_SPACE)){
+	next_level(&player, balls, num_balls);
+	if (game_state.level % 3 == 0 && num_balls < MAX_BALLS) {
+	  num_balls++;
+	}
+      }
+    } else {
+      if (!player.moving)
+	{
+	  if (IsKeyDown(KEY_RIGHT)) player_move(&player, +1,  0);
+	  if (IsKeyDown(KEY_LEFT))  player_move(&player, -1,  0);
+	  if (IsKeyDown(KEY_UP))    player_move(&player,  0, -1);
+	  if (IsKeyDown(KEY_DOWN))  player_move(&player,  0, +1);
+	}
+
+      player_update(&player, dt);
+      
+      if (!player_on_border) {
+	if (check_collision_with_balls(&player, balls, 1)) {
+	  game_state.lives--;
+	  if (game_state.lives <= 0) {
+	    game_state.game_over = true;
+	  } else {
+	    reset_player_to_border(&player);
+	  }
+	}
+      }
+      for (int i = 0; i < num_balls; i++) {
+	balls[i] = ball_update(balls[i], dt, grid);
+      }
+      
+      update_percentage();
+
+      if (game_state.percentage_filled >= 10.0f && !game_state.level_complete) {
+	game_state.level_complete = true;
+	game_state.score += (int)(game_state.percentage_filled * 10) + game_state.level * 100;
+      }
+    }
+    
     BeginDrawing();
     ClearBackground(BLACK);
-    draw_grid(balls[0]);
-    DrawCircleV(balls[0].pos, balls[0].rad, balls[0].color);
-    DrawCircleV(player.pos, player.rad, player.color);
-    //DrawCircle(attractor.pos.x, attractor.pos.y, attractor.rad, attractor.color);
-    draw_ui();
-    if (game_state.game_over) {
-      DrawText("Game over loser :}", SCREEN_WIDTH/2 - 175, SCREEN_HEIGHT/2, 40, RED);
+
+    draw_grid(player);
+
+    for (int i = 0; i < num_balls; i++){
+    DrawCircleV(balls[i].pos, balls[i].rad, balls[i].color);
     }
+    
+    DrawCircleV(player.pos, player.rad, player.color);
+    
+    draw_ui();
+
+    if (game_state.game_over) {
+      DrawText("GAME OVER (~_~)", SCREEN_WIDTH/2 - 175, SCREEN_HEIGHT/2, 40, RED);
+      DrawText("Press R to restart", SCREEN_WIDTH/2 - 80, SCREEN_HEIGHT/2 + 50, 20, WHITE);
+    }
+
+    if (game_state.level_complete) {
+      DrawText("LEVEL COMPLETE!", SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT/2, 40, GREEN);
+      DrawText("Press SPACE for next level", SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT/2 + 40, 20, WHITE);
+    }
+    
     EndDrawing();
   }
 
@@ -142,25 +193,23 @@ Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS]) {
   int next_cell_x = next_pos.x / CELL_SIZE;
   int next_cell_y = next_pos.y / CELL_SIZE;
 
-  
   int cell_x = ball.pos.x / CELL_SIZE;
   int cell_y = ball.pos.y / CELL_SIZE;
+
   WallState current = grid[cell_y][cell_x];
 
 
-  // if(ball.pos.x >= (SCREEN_WIDTH - ball.rad) || ball.pos.x <= (0 + ball.rad))
   if(grid[cell_y][next_cell_x] == WALL_SOLID)
     {
       ball.vel.x = -ball.vel.x;
     }
-  //if(ball.pos.y >= (SCREEN_HEIGHT - ball.rad) || ball.pos.y <= (0 + ball.rad))
   if(grid[next_cell_y][cell_x] == WALL_SOLID)
     {
       ball.vel.y = -ball.vel.y;
     }
   
-  ball.pos.x += ball.vel.x ;//* dt;
-  ball.pos.y += ball.vel.y ;//* dt;
+  ball.pos.x += ball.vel.x ;
+  ball.pos.y += ball.vel.y ;
   return ball ;
 }
 
@@ -181,43 +230,37 @@ void apply_force(Ball *ball, Vector2 force, float dt)
 }
 
 // # 5
-void draw_grid(Ball ball)
-{
+void draw_grid(Ball ball) {
   
-  
-  for(int row = 0; row < GRID_ROWS; row++)
-    {
-      for(int col = 0; col < GRID_COLS; col++)
-	{
-	  WallState state = grid[row][col];
-	  Color c ;
+  for(int row = 0; row < GRID_ROWS; row++) {
+    for(int col = 0; col < GRID_COLS; col++) {
+      WallState state = grid[row][col];
+      Color c ;
 
-	  switch(state)
-	    {
-	    case WALL_BLANK: c = BLACK; break;
-	    case WALL_BUILDING: c = YELLOW; break;
-	    case WALL_SOLID: c = GRAY; break;
-	    }
+      switch(state) {
+      case WALL_BLANK: c = BLACK; break;
+      case WALL_BUILDING: c = YELLOW; break;
+      case WALL_SOLID: c = GRAY; break;
+      }
 
-	  DrawRectangle(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE, c);
-	}
+      DrawRectangle(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE, c);
+      DrawRectangleLines(col * CELL_SIZE, row * CELL_SIZE, CELL_SIZE, CELL_SIZE, DARKGRAY);
     }
+  }
     
 }
 
 // # 6
 void init_grid() {
 
-  for(int row = 0; row < GRID_ROWS; row++)
-    {
-      for(int col = 0; col < GRID_COLS; col++)
-	{
-	  if(row == 0 || row == GRID_ROWS - 1 || col == 0 || col == GRID_COLS - 1)
-	    grid[row][col] = WALL_SOLID;
-	  else
-	    grid[row][col] = WALL_BLANK;
-	}
+  for(int row = 0; row < GRID_ROWS; row++) {
+    for(int col = 0; col < GRID_COLS; col++) {
+      if(row == 0 || row == GRID_ROWS - 1 || col == 0 || col == GRID_COLS - 1)
+	grid[row][col] = WALL_SOLID;
+      else
+	grid[row][col] = WALL_BLANK;
     }
+  }
 }
 
 // # 7
@@ -271,28 +314,29 @@ void player_update(Ball *player, float dt)
     player->cell_x = player->target_x;
     player->cell_y = player->target_y;
     player->moving = false;
+    
+    bool was_on_border = player_on_border;
+    bool now_on_border = is_on_border(player->cell_x, player->cell_y);
 
-    //if (grid[player->cell_y][player->cell_x] == WALL_BLANK) make_tile();
+    player_on_border = now_on_border;
+
+    // if moving from border to non border
+    if (was_on_border && !now_on_border) {
+      game_state.trail_start = (Vector2){player->cell_x, player->cell_y};
+      grid[player->cell_y][player->cell_x] = WALL_BUILDING;
+    }
+    //if building continue trail
+    else if (!was_on_border && !now_on_border) {
+      grid[player->cell_y][player->cell_x] = WALL_BUILDING;
+    }
+    //if building and reach border 
+    else if (!was_on_border && now_on_border){
+      complete_area();
+    }
+
   } else {
     Vector2 step = Vector2Scale(Vector2Normalize(dir), player->speed * dt);
     player->pos = Vector2Add(player->pos, step);
-  }
-  bool was_on_border = player_on_border;
-  bool now_on_border = is_on_border(player->cell_x, player->cell_y);
-  player_on_border = now_on_border;
-
-  //debug
-  if (was_on_border != now_on_border){
-    printf("Player moved %s border\n", now_on_border ? "to" : "frome");
-  }
-  if (was_on_border && !now_on_border) {
-    grid[player->cell_y][player->cell_x] = WALL_BUILDING;
-    printf("Started building");
-  } else if (!was_on_border && !now_on_border) {
-    grid[player->cell_y][player->cell_x] = WALL_BUILDING;
-  }
-  if (!was_on_border && now_on_border){
-    complete_area();
   }
 }
 
@@ -303,6 +347,10 @@ bool is_on_border(int x, int y) {
 
 // # 11
 void complete_area() {
+  //create a temp copy of the grid
+  //convert building to wall in temp  grid
+  //find areas with balls in them and keep them blank
+  //copy the result back
   int cells_converted = 0;
   for (int i = 0; i < GRID_ROWS; i++) {
     for (int j = 0; j < GRID_COLS; j++) {
@@ -312,15 +360,18 @@ void complete_area() {
       }
     }
   }
-  game_state.score = 5 * cells_converted;
-  printf("area completed \n");
+  game_state.score += 5 * cells_converted;
 }
 
 // # 12
 void init_game_state() {
   game_state.lives = 3;
   game_state.score = 0;
+  game_state.level = 1;
+  game_state.percentage_filled = 0.0f;
+  game_state.level_complete = false;
   game_state.game_over = false;
+  game_state.trail_start = (Vector2){0, 0};
 }
 
 // # 13
@@ -358,4 +409,34 @@ void draw_ui() {
 
   sprintf(text, "score: %d", game_state.score);
   DrawText(text, 10, 35, 20, WHITE);
+
+  sprintf(text,"Fille: %.1f%%", game_state.percentage_filled);
+  DrawText(text, 10, 60, 20, WHITE);
+
+  sprintf(text, "Level: %d", game_state.level);
+  DrawText(text, 10, 85, 20, WHITE);
+
+  sprintf(text, "Target: 80%%");
+  DrawText(text, 10, 110, 20, WHITE);
 }
+
+// # 16
+void update_percentage() {
+  int total_cells = 0;
+  int filled_cells = 0;
+
+  for (int i = 1; i < GRID_ROWS - 1; i++) {
+    for (int j = 0; j < GRID_COLS - 1; j++){
+      total_cells++;
+      if (grid[i][j] == WALL_SOLID) {
+	filled_cells++;
+      }
+    }
+  }
+
+  game_state.percentage_filled = (float)filled_cells / total_cells * 100.0f;
+}
+
+void reset_level(Ball *player, Ball balls[], int num_balls) { printf("reset level"); }
+
+void next_level(Ball *player, Ball balls[], int num_balls) { printf("next level"); }
