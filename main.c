@@ -41,7 +41,8 @@ GameState game_state;
 typedef enum {
   WALL_BLANK,
   WALL_BUILDING,
-  WALL_SOLID
+  WALL_SOLID,
+  WALL_VISITED
 } WallState;
 
 
@@ -60,10 +61,10 @@ void init_grid();
 //player
 void player_init(Ball *player, int start_cell_x, int start_cell_y, float speed,float rad, Color color);
 void player_move(Ball *player, int dx, int dy);
-void player_update(Ball *player, float dt);
+void player_update(Ball *player, float dt, Ball balls[], int num_balls);
 static inline bool is_solid_cell(int row, int col);
 //player mech
-void complete_area();
+void complete_area(Ball balls[], int num_balls);
 void reset_player_to_border(Ball *player);
 bool is_on_border(int x, int y);
 
@@ -120,7 +121,7 @@ int main(void) {
 	  if (IsKeyDown(KEY_DOWN))  player_move(&player,  0, +1);
 	}
 
-      player_update(&player, dt);
+      player_update(&player, dt, balls, num_balls);
       
       if (!player_on_border) {
 	if (check_collision_with_balls(&player, balls, 1)) {
@@ -138,7 +139,7 @@ int main(void) {
       
       update_percentage();
 
-      if (game_state.percentage_filled >= 10.0f && !game_state.level_complete) {
+      if (game_state.percentage_filled >= 80.0f && !game_state.level_complete) {
 	game_state.level_complete = true;
 	game_state.score += (int)(game_state.percentage_filled * 10) + game_state.level * 100;
       }
@@ -297,7 +298,7 @@ void player_move(Ball *player, int dx, int dy) {
 
 
 // # 9
-void player_update(Ball *player, float dt)
+void player_update(Ball *player, float dt, Ball balls[], int num_balls)
 {
   if (!player->moving) return;
 
@@ -327,7 +328,7 @@ void player_update(Ball *player, float dt)
     }
     //if building and reach border 
     else if (!was_on_border && now_on_border){
-      complete_area();
+      complete_area(balls, num_balls);
     }
     //if building continue trail
     else if (!was_on_border && !now_on_border) {
@@ -347,7 +348,7 @@ bool is_on_border(int x, int y) {
 }
 
 // # 11
-void complete_area() {
+void complete_area(Ball balls[], int num_balls) {
   //create a temp copy of the grid
   WallState temp_grid[GRID_ROWS][GRID_COLS];
   for (int i = 0; i< GRID_ROWS; i++) {
@@ -363,7 +364,13 @@ void complete_area() {
       }
     }
   }
-  Ball balls[MAX_BALLS] = {0};
+
+  for (int b = 0; b < num_balls; b++) {
+    int cx = balls[b].pos.x / CELL_SIZE;
+    int cy = balls[b].pos.y / CELL_SIZE;
+
+    flood_fill(temp_grid, cy, cx, balls, num_balls);
+  } 
 
   for (int i = 0; i < GRID_ROWS; i++) {
     if (temp_grid[i][0] == WALL_BLANK) {
@@ -383,7 +390,6 @@ void complete_area() {
     }
   }
   //copy the result back
-  int cells_converted = 0;
   for (int i = 0; i < GRID_ROWS; i++) {
     for (int j = 0; j < GRID_COLS; j++) {
       if (grid[i][j] == WALL_BUILDING) {
@@ -501,7 +507,7 @@ void flood_fill(WallState temp_grid[GRID_ROWS][GRID_COLS], int row, int col, Bal
   if (row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) return;
   if (temp_grid[row][col] != WALL_BLANK) return;
 
-  temp_grid[row][col] = WALL_SOLID;
+  temp_grid[row][col] = WALL_VISITED;
 
   flood_fill(temp_grid, row + 1, col, balls, num_balls);
   flood_fill(temp_grid, row - 1, col, balls, num_balls);
