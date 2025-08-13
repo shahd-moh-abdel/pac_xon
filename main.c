@@ -437,6 +437,28 @@ void update_percentage() {
   game_state.percentage_filled = (float)filled_cells / total_cells * 100.0f;
 }
 
-void reset_level(Ball *player, Ball balls[], int num_balls) { printf("reset level"); }
+// # 17
+void reset_level(Ball *player, Ball balls[], int num_balls) {
+  init_grid();
+  player_init(player, 0, 0, player->speed, player->rad, player->color);
+  balls[0] = ball_init((Vector2){200.0f, 300.0f}, (Vector2){4.0f, 5.0f}, 15, 20, RED);
+  if (num_balls > 1) {
+    balls[1] = ball_init((Vector2){600.0f, 400.0f}, (Vector2){-3.0f, 4.0f}, 15, 20, RED);
+  }
+  if (num_balls > 2) {
+    balls[2] = ball_init((Vector2){400.0f, 200.0f}, (Vector2){5.0f, -3.0f}, 15, 20, RED);
+  }
+}
 
-void next_level(Ball *player, Ball balls[], int num_balls) { printf("next level"); }
+// # 18
+void next_level(Ball *player, Ball balls[], int num_balls) {
+  game_state.level++;
+  game_state.level_complete = false;
+
+  reset_level(player, balls, num_balls);
+
+  for (int i = 0; i < num_balls; i++) {
+    balls[i].vel.x *= 1.1f;
+    balls[i].vel.y *= 1.1f;
+  }
+}
