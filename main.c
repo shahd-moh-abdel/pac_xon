@@ -325,14 +325,15 @@ void player_update(Ball *player, float dt)
       game_state.trail_start = (Vector2){player->cell_x, player->cell_y};
       grid[player->cell_y][player->cell_x] = WALL_BUILDING;
     }
-    //if building continue trail
-    else if (!was_on_border && !now_on_border) {
-      grid[player->cell_y][player->cell_x] = WALL_BUILDING;
-    }
     //if building and reach border 
     else if (!was_on_border && now_on_border){
       complete_area();
     }
+    //if building continue trail
+    else if (!was_on_border && !now_on_border) {
+      grid[player->cell_y][player->cell_x] = WALL_BUILDING;
+    }
+
 
   } else {
     Vector2 step = Vector2Scale(Vector2Normalize(dir), player->speed * dt);
@@ -348,19 +349,51 @@ bool is_on_border(int x, int y) {
 // # 11
 void complete_area() {
   //create a temp copy of the grid
+  WallState temp_grid[GRID_ROWS][GRID_COLS];
+  for (int i = 0; i< GRID_ROWS; i++) {
+    for (int j = 0; j < GRID_COLS; j++) {
+      temp_grid[i][j] = grid[i][j];
+    }
+  }
   //convert building to wall in temp  grid
-  //find areas with balls in them and keep them blank
+  for (int i = 0; i< GRID_ROWS; i++) {
+    for (int j = 0; j < GRID_COLS; j++) {
+      if (temp_grid[i][j] == WALL_BUILDING) {
+	temp_grid[i][j] = WALL_SOLID;
+      }
+    }
+  }
+  Ball balls[MAX_BALLS] = {0};
+
+  for (int i = 0; i < GRID_ROWS; i++) {
+    if (temp_grid[i][0] == WALL_BLANK) {
+      flood_fill(temp_grid, i, 0, balls, 1);
+    }
+    if (temp_grid[i][GRID_COLS - 1] == WALL_BLANK) {
+      flood_fill(temp_grid, i, GRID_COLS - 1, balls, 1);
+    }
+  }
+
+  for (int j = 0; j < GRID_COLS; j++) {
+    if (temp_grid[0][j] == WALL_BLANK) {
+      flood_fill(temp_grid, 0, j, balls, 1);
+    }
+    if (temp_grid[GRID_ROWS - 1][j] == WALL_BLANK){
+      flood_fill(temp_grid, GRID_ROWS - 1, j, balls, 1);
+    }
+  }
   //copy the result back
   int cells_converted = 0;
   for (int i = 0; i < GRID_ROWS; i++) {
     for (int j = 0; j < GRID_COLS; j++) {
       if (grid[i][j] == WALL_BUILDING) {
 	grid[i][j] = WALL_SOLID;
-	cells_converted++;
+      } else if (grid[i][j] == WALL_BLANK && temp_grid[i][j] == WALL_BLANK){
+	grid[i][j] = WALL_SOLID;
+	game_state.score += 10;
       }
     }
   }
-  game_state.score += 5 * cells_converted;
 }
 
 // # 12
@@ -426,7 +459,7 @@ void update_percentage() {
   int filled_cells = 0;
 
   for (int i = 1; i < GRID_ROWS - 1; i++) {
-    for (int j = 0; j < GRID_COLS - 1; j++){
+    for (int j = 1; j < GRID_COLS - 1; j++){
       total_cells++;
       if (grid[i][j] == WALL_SOLID) {
 	filled_cells++;
@@ -461,4 +494,17 @@ void next_level(Ball *player, Ball balls[], int num_balls) {
     balls[i].vel.x *= 1.1f;
     balls[i].vel.y *= 1.1f;
   }
+}
+
+// # 19
+void flood_fill(WallState temp_grid[GRID_ROWS][GRID_COLS], int row, int col, Ball balls[], int num_balls) {
+  if (row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) return;
+  if (temp_grid[row][col] != WALL_BLANK) return;
+
+  temp_grid[row][col] = WALL_SOLID;
+
+  flood_fill(temp_grid, row + 1, col, balls, num_balls);
+  flood_fill(temp_grid, row - 1, col, balls, num_balls);
+  flood_fill(temp_grid, row , col + 1, balls, num_balls);
+  flood_fill(temp_grid, row , col - 1, balls, num_balls);
 }
