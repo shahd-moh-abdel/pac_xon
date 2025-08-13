@@ -46,6 +46,7 @@ void player_init(Ball *player, int start_cell_x, int start_cell_y, float speed,
 void player_move(Ball *player, int dx, int dy);
 void player_update(Ball *player, float dt);
 bool is_on_border(int x, int y);
+void complete_area();
 static inline bool is_solid_cell(int row, int col);
 bool player_on_border = true;
 
@@ -265,9 +266,30 @@ void player_update(Ball *player, float dt)
   if (was_on_border != now_on_border){
     printf("Player moved %s border\n", now_on_border ? "to" : "frome");
   }
+  if (was_on_border && !now_on_border) {
+    grid[player->cell_y][player->cell_x] = WALL_BUILDING;
+    printf("Started building");
+  } else if (!was_on_border && !now_on_border) {
+    grid[player->cell_y][player->cell_x] = WALL_BUILDING;
+  }
+  if (!was_on_border && now_on_border){
+    complete_area();
+  }
 }
 
 // # 10
 bool is_on_border(int x, int y) {
   return (x == 0 || x == GRID_COLS - 1 || y == 0 || y == GRID_ROWS - 1) || grid[y][x] == WALL_SOLID;
+}
+
+// # 11
+void complete_area() {
+  for (int i = 0; i < GRID_ROWS; i++) {
+    for (int j = 0; j < GRID_COLS; j++) {
+      if (grid[i][j] == WALL_BUILDING) {
+	grid[i][j] = WALL_SOLID;
+      }
+    }
+  }
+  printf("area completed \n");
 }
