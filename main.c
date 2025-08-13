@@ -23,6 +23,13 @@ typedef struct {
   float speed;
 } Ball;
 
+typedef struct {
+  int lives;
+  int score;
+  bool game_over;
+} GameState;
+GameState game_state;
+
 //WALLS
 typedef enum {
   WALL_BLANK,
@@ -47,19 +54,24 @@ void player_move(Ball *player, int dx, int dy);
 void player_update(Ball *player, float dt);
 bool is_on_border(int x, int y);
 void complete_area();
+void init_game_state();
+bool check_collision_with_balls(Ball *player, Ball balls[], int num_balls);
+void reset_player_to_border(Ball *player);
 static inline bool is_solid_cell(int row, int col);
 bool player_on_border = true;
 
 
 int main(void) {
   float G = 1000.0f;
-  Ball ball = ball_init((Vector2){200.0f, 300.0f}, (Vector2){4.0f, 5.0f}, 20, 20, GREEN);
+  Ball balls[1];
+  balls[0] = ball_init((Vector2){200.0f, 300.0f}, (Vector2){4.0f, 5.0f}, 20, 20, RED);
 
   //Ball attractor = ball_init((Vector2){(SCREEN_WIDTH / 2.0f), (SCREEN_HEIGHT / 2.0f)},(Vector2){0, 0}, 40, 100000, RED); 
   
   Rectangle random_rec = {510, 350, 30, 30};
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Pac Xon");
   init_grid();
+  init_game_state();
 
   Ball player;
   player_init(&player, 2, 2, 220.0f, CELL_SIZE * 0.4f, DARKGREEN);
@@ -77,14 +89,26 @@ int main(void) {
 	if (IsKeyPressed(KEY_UP))    player_move(&player,  0, -1);
 	if (IsKeyPressed(KEY_DOWN))  player_move(&player,  0, +1);
       }
+    if (!player_on_border) {
+      if (check_collision_with_balls(&player, balls, 1)) {
+	game_state.lives--;
+	printf("lives remaining: %d\n", game_state.lives);
+	if (game_state.lives <= 0) {
+	  game_state.game_over = true;
+	  printf("game over :(\n");
+	} else {
+	  reset_player_to_border(&player);
+	}
+	}
+    }
 
     player_update(&player, dt);
-    ball = ball_update(ball, dt, grid);
+    balls[0] = ball_update(balls[0], dt, grid);
     //attractor = ball_update(attractor, dt);
     BeginDrawing();
     ClearBackground(BLACK);
-    draw_grid(ball);
-    DrawCircleV(ball.pos, ball.rad, ball.color);
+    draw_grid(balls[0]);
+    DrawCircleV(balls[0].pos, balls[0].rad, balls[0].color);
     DrawCircleV(player.pos, player.rad, player.color);
     //DrawCircle(attractor.pos.x, attractor.pos.y, attractor.rad, attractor.color);
     EndDrawing();
@@ -189,16 +213,6 @@ void init_grid() {
 	    grid[row][col] = WALL_BLANK;
 	}
     }
-
-  grid[1][16] = WALL_SOLID;
-  grid[2][16] = WALL_SOLID;
-  grid[3][16] = WALL_SOLID;
-  grid[4][16] = WALL_SOLID;
-  grid[5][16] = WALL_SOLID;
-  grid[6][16] = WALL_SOLID;
-  grid[7][16] = WALL_SOLID;
-  grid[8][16] = WALL_SOLID;
-  grid[9][16] = WALL_SOLID;  
 }
 
 // # 7
@@ -293,3 +307,38 @@ void complete_area() {
   }
   printf("area completed \n");
 }
+
+// # 12
+void init_game_state() {
+  game_state.lives = 3;
+  game_state.score = 0;
+  game_state.game_over = false;
+}
+
+// # 13
+bool check_collision_with_balls(Ball *player, Ball balls[], int num_balls) {
+  for (int i = 0; i < num_balls; i++) {
+    float dist = Vector2Distance(player->pos, balls[i].pos);
+    if (dist < player->rad + balls[i].rad) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// # 14
+
+void reset_player_to_border(Ball *player)
+{
+  for (int i = 0; i < GRID_ROWS; i++)
+    {
+      for(int j = 0; j < GRID_COLS; j++)
+	{
+	  if(grid[i][j] == WALL_BUILDING) grid[i][j] = WALL_BLANK;
+	}
+    }
+
+  player_init(player, 1, 1, player->speed, player->rad, player->color);
+  player_on_border = true;
+}
+
