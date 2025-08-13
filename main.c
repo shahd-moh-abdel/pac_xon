@@ -52,7 +52,7 @@ WallState grid[GRID_ROWS][GRID_COLS];
 // ** FUNCTIONS ** //
 //ball
 Ball ball_init(Vector2 pos, Vector2 vel, float rad, float mass, Color color);
-Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS]);
+Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS], Ball *player);
 Vector2 get_attraction_force(Ball a, Ball b, float G);
 void apply_force(Ball *ball, Vector2 force, float dt);
 //grid
@@ -134,7 +134,7 @@ int main(void) {
 	}
       }
       for (int i = 0; i < num_balls; i++) {
-	balls[i] = ball_update(balls[i], dt, grid);
+	balls[i] = ball_update(balls[i], dt, grid, &player);
       }
       
       update_percentage();
@@ -183,7 +183,7 @@ Ball ball_init(Vector2 pos, Vector2 vel, float rad, float mass, Color color) {
 }
 
 // # 2
-Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS]) {
+Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS], Ball *player ) {
 
   Vector2 next_pos = {
     ball.pos.x + ball.vel.x,
@@ -208,6 +208,16 @@ Ball ball_update(Ball ball, float dt, WallState grid[GRID_ROWS][GRID_COLS]) {
     {
       ball.vel.y = -ball.vel.y;
     }
+
+  
+  if(grid[next_cell_y][cell_x] == WALL_BUILDING || grid[next_cell_y][cell_x] == WALL_BUILDING ) {
+    game_state.lives--;
+    if (game_state.lives <= 0) {
+      game_state.game_over = true;
+    } else {
+      reset_player_to_border(player);
+    }
+  }
   
   ball.pos.x += ball.vel.x ;
   ball.pos.y += ball.vel.y ;
