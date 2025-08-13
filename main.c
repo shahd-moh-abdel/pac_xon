@@ -1,4 +1,6 @@
 
+#include <stdio.h>
+#include <stdbool.h>
 #include "raylib.h"
 #include "raymath.h"
 #define SCREEN_WIDTH 1020
@@ -43,7 +45,10 @@ void player_init(Ball *player, int start_cell_x, int start_cell_y, float speed,
                  float rad, Color color);
 void player_move(Ball *player, int dx, int dy);
 void player_update(Ball *player, float dt);
+bool is_on_border(int x, int y);
 static inline bool is_solid_cell(int row, int col);
+bool player_on_border = true;
+
 
 int main(void) {
   float G = 1000.0f;
@@ -249,8 +254,20 @@ void player_update(Ball *player, float dt)
 
     //if (grid[player->cell_y][player->cell_x] == WALL_BLANK) make_tile();
   } else {
-
     Vector2 step = Vector2Scale(Vector2Normalize(dir), player->speed * dt);
     player->pos = Vector2Add(player->pos, step);
   }
+  bool was_on_border = player_on_border;
+  bool now_on_border = is_on_border(player->cell_x, player->cell_y);
+  player_on_border = now_on_border;
+
+  //debug
+  if (was_on_border != now_on_border){
+    printf("Player moved %s border\n", now_on_border ? "to" : "frome");
+  }
+}
+
+// # 10
+bool is_on_border(int x, int y) {
+  return (x == 0 || x == GRID_COLS - 1 || y == 0 || y == GRID_ROWS - 1) || grid[y][x] == WALL_SOLID;
 }
